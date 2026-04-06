@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESD-Predictor - Tool</title>
+    <!-- 引入 Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f8fb;
+        }
+        .container {
+            max-width: 900px;
+            padding-top: 50px;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #4c5c68;
+        }
+        .btn {
+            background-color: #0069d9;
+            color: white;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        table {
+            margin-top: 30px;
+        }
+        .table th, .table td {
+            text-align: center;
+        }
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">ESD-Predictor</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/index">Tool</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5 pt-5">
+        <div class="card p-4">
+            <h1 class="text-center mb-4">Upload CSV Files for Prediction</h1>
+            <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data">
+                <!-- 文件上传 -->
+                <div class="mb-3">
+                    <label for="file" class="form-label">Choose CSV files</label>
+                    <input type="file" class="form-control" name="file" accept=".csv" multiple required>
+                </div>
+				
+				<!-- 选择模型方法 -->
+                <div class="mb-3">
+                    <label for="model" class="form-label">Choose Model Method:</label>
+                    <select name="model" class="form-select" required>
+                        <option value="svm">SVM (Support Vector Machine)</option>
+                        <option value="rf">RF (Random Forest)</option>
+                        <option value="lstm">LSTM (Long Short-Term Memory)</option>
+                        <option value="cnn">CNN (Convolutional Neural Network)</option>
+                    </select>
+                </div>
+
+                <!-- 选择标准化方法 -->
+                <div class="mb-3">
+                    <label for="normalization" class="form-label">Choose Normalization Method:</label>
+                    <select name="normalization" class="form-select" required>
+                        <option value="standard">StandardScaler</option>
+                        <option value="minmax">MinMaxScaler</option>
+                    </select>
+                </div>
+
+                
+
+                <!-- 提交按钮 -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Upload and Predict</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 预测结果表格 -->
+        <div id="result-table-container" style="display:none;">
+            <h3 class="text-center my-4">Prediction Results</h3>
+            <div class="table-container">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>Mean</th>
+                            <th>Std</th>
+                            <th>Min</th>
+                            <th>Median</th>
+                            <th>Skewness</th>
+                            <th>Kurtosis</th>
+                            <th>RMS</th>
+                            <th>Trend Slope</th>
+                            <th>Dominant Frequency</th>
+                            <th>Spectral Centroid</th>
+                            <th>Peak Value</th>
+                            <th>Predicted Peak Value</th>
+                            <th>Predicted Rise Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="result-table-body">
+                        <!-- Results will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入 Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 处理文件上传和显示预测结果
+        const form = document.getElementById("upload-form");
+        form.onsubmit = function(event) {
+            event.preventDefault();  // 防止表单刷新页面
+
+            let formData = new FormData(form);
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 展示结果表格
+                document.getElementById("result-table-container").style.display = 'block';
+                let resultTableBody = document.getElementById("result-table-body");
+
+                // 清空现有结果
+                resultTableBody.innerHTML = "";
+
+                // 循环遍历每个文件的结果
+                data.results.forEach(result => {
+                    let row = document.createElement("tr");
+
+                    row.innerHTML = `
+                        <td>${result.file_name}</td>
+                        <td>${result.mean.toFixed(4)}</td>
+                        <td>${result.std.toFixed(4)}</td>
+                        <td>${result.min.toFixed(4)}</td>
+                        <td>${result.median.toFixed(4)}</td>
+                        <td>${result.skewness.toFixed(4)}</td>
+                        <td>${result.kurtosis.toFixed(4)}</td>
+                        <td>${result.rms.toFixed(4)}</td>
+                        <td>${result.trend_slope.toFixed(4)}</td>
+                        <td>${result.dominant_frequency}</td>
+                        <td>${result.spectral_centroid.toFixed(4)}</td>
+                        <td>${result.peak_value.toFixed(4)}</td>
+                        <td>${result.predicted_peak_value.toFixed(4)}</td>
+                        <td>${result.predicted_rise_rate.toFixed(4)}</td>
+                    `;
+
+                    resultTableBody.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+        };
+    </script>
+</body>
+</html>
